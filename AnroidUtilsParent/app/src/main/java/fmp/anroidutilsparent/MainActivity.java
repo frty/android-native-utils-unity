@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String SaveBitmap(Bitmap bitmap) {
-        String mPath = getFilesDir().toString() + "/screenshot_1.jpg";
+        String mPath = getFilesDir().toString() + "/screenshot_1.png";
 
         File imageFile = new File(mPath);
 
@@ -55,7 +55,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void SendEmailClick(View v) {
-        AndroidUtilsPlugin.getInstance().SendEmail("a@a.com", null, null, "a");
+        Bitmap bitmap = screenShot(this.getWindow().getDecorView().getRootView());
+        String mPath = SaveBitmap(bitmap);
+        AndroidUtilsPlugin.getInstance().SendEmail("a@a.com", null, null, mPath);
     }
 
     public void ShareImageClick(View v) {
@@ -67,39 +69,4 @@ public class MainActivity extends AppCompatActivity {
     public void ShareTextClick(View v) {
         AndroidUtilsPlugin.getInstance().ShareMedia("http://google.com my body", "my subject", null);
     }
-
-//    private String moveFile(String filePath) {
-//
-//        File storageDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-//
-//        File oldFile = new File(filePath);
-//        File newFile = new File(storageDir, oldFile.getName());
-//
-//        FileChannel outputChannel = null;
-//        FileChannel inputChannel = null;
-//        try {
-//            outputChannel = new FileOutputStream(newFile).getChannel();
-//            inputChannel = new FileInputStream(oldFile).getChannel();
-//            inputChannel.transferTo(0, inputChannel.size(), outputChannel);
-//            inputChannel.close();
-//            return newFile.getPath();
-//        }
-//        catch (IOException ex) {
-//            Log.v("v", "failed to move file: " + ex.getStackTrace().toString());
-//            return oldFile.getPath();
-//        }
-//        finally {
-//            if (inputChannel != null) try {
-//                inputChannel.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//            if (outputChannel != null) try {
-//                outputChannel.close();
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-//        }
-//    }
-
 }

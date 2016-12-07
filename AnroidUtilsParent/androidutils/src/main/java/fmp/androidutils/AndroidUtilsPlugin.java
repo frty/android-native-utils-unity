@@ -2,9 +2,17 @@ package fmp.androidutils;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
+import android.support.v4.content.FileProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.util.List;
 
 public class AndroidUtilsPlugin {
 
@@ -32,10 +40,17 @@ public class AndroidUtilsPlugin {
         if (message != null && !message.isEmpty())
             emailIntent.putExtra(Intent.EXTRA_TEXT, message);
 
-        if (fileName != null && !fileName.isEmpty()) {
-            File file = new File(fileName);
-            if (file.exists()) {
-                emailIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+        File file = PrepareFileForShare(fileName);
+
+        if (file != null) {
+            Uri contentUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", file);
+            emailIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+            emailIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            List<ResolveInfo> resInfoList = activity.getPackageManager().queryIntentActivities(emailIntent, PackageManager.MATCH_DEFAULT_ONLY);
+            for (ResolveInfo resolveInfo : resInfoList) {
+                String packageName = resolveInfo.activityInfo.packageName;
+                activity.grantUriPermission(packageName, contentUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
             }
         }
 
@@ -52,11 +67,15 @@ public class AndroidUtilsPlugin {
             shareIntent.putExtra(Intent.EXTRA_SUBJECT, subject);
 
         boolean imageAdded = false;
-        if (imagePath != null && !imagePath.isEmpty()) {
-            File file = new File(imagePath);
-            if (file.exists()) {
-                shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+        File file = PrepareFileForShare(imagePath);
+        if (file != null) {
+            try {
+                Uri contentUri = FileProvider.getUriForFile(activity, activity.getPackageName() + ".fileprovider", file);
+                shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 imageAdded = true;
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
             }
         }
 
@@ -67,5 +86,46 @@ public class AndroidUtilsPlugin {
         }
 
         activity.startActivity(Intent.createChooser(shareIntent, "Share via..."));
+    }
+
+    private File PrepareFileForShare(String filePath) {
+
+        if (filePath == null || filePath.isEmpty())
+            return null;
+
+        File oldFile = new File(filePath);
+
+        if (!oldFile.exists())
+            return null;
+
+        File storageDir = new File(activity.getFilesDir(), "shared_images");
+        if (!storageDir.exists()) {
+            storageDir.mkdirs();
+        }
+
+        File newFile = new File(storageDir, "image.png");
+
+        FileChannel outputChannel = null;
+        FileChannel inputChannel = null;
+        try {
+            outputChannel = new FileOutputStream(newFile).getChannel();
+            inputChannel = new FileInputStream(oldFile).getChannel();
+            inputChannel.transferTo(0, inputChannel.size(), outputChannel);
+            inputChannel.close();
+            return newFile;
+        } catch (IOException ex) {
+            return null;
+        } finally {
+            if (inputChannel != null) try {
+                inputChannel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (outputChannel != null) try {
+                outputChannel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
